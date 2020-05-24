@@ -58,25 +58,11 @@ colnames(worldcountryData@data)[c(72, 73, 74, 75, 76, 77)] <- c("cases",
 
 
 ###   MAPPING   ###
-palettes <- c("cases" = "Blues", "deaths" = "OrRd", "recovered" = "YlGn")
-
 basemap <- leaflet(worldcountryData) %>%
-                addPolygons(
-                  fillColor = ~ palDeaths(deaths),
-                  fillOpacity = 1,
-                  color = "black",
-                  weight = 1
-                ) %>%
-                setView(lng = 0,
+               addTiles() %>%
+               setView(lng = 0,
                         lat = 30,
-                        zoom = 1.4) %>%
-                addLegend(
-                  position = "bottomright",
-                  pal = palDeaths,
-                  values = ~ deaths,
-                  opacity = 1
-                )
-
+                        zoom = 1.4)
 
 
 
@@ -85,33 +71,37 @@ u.i <- fluidPage(
   
   titlePanel("Covid Mapping"),
   
-  sidebarLayout(position = "left",
+  sidebarLayout(position = "left", 
                 
                 sidebarPanel(
                   
+                  h3("Palette"),
+                  checkboxInput(inputId = "quantile",
+                                label = "Quantile palette",
+                                value = FALSE),
+                  
                   radioButtons(
                     inputId = "category",
-                    label =  "Category",
+                    label = h3("Category"),
                     choices = list(
-                      "Cases" = 1,
-                      "New cases" = 2,
-                      "Deaths" = 3,
-                      "New Deaths" = 4,
-                      "Recoverd" = 5,
-                      "New Recovered" = 6
+                      "Cases" = "cases",
+                      "New cases" = "new_cases",
+                      "Deaths" = "deaths",
+                      "New Deaths" = "new_deaths",
+                      "Recoverd" = "recovered",
+                      "New Recovered" = "new_recovered"
                     )
                   ),
                   
                   sliderInput("date",
-                              label = "Date",
+                              label = h3("Date"),
                               min = as.Date("2020-01-22","%Y-%m-%d"),
                               max = as.Date("2020-05-17", "%Y-%m-%d"),
                               value = as.Date("2020-05-17", "%Y-%m-%d"),
                               timeFormat = "%F")
                 ),
                 
-                mainPanel(h3("Leaflet plot maybe one day ?"),
-                          basemap
+                mainPanel(leafletOutput("map")
                           )
                 )
   )
@@ -119,98 +109,109 @@ u.i <- fluidPage(
 
 ser.ver <- function(input, output){
   
-  reactive_db_date = reactive({
-    spec_date_df = df[df$date == input$date,]
+  dataInput <- reactive({
+    spec_date_df <- df[as.Date(df$date) == input$date,]
+    # order country by df order
+    bigOne <- merge(worldcountry, 
+                    merge(spec_date_df, countries, by = "country"), 
+                    by.x = "ADM0_A3", by.y = "alpha3")
+    
+    worldcountryData <- worldcountry[match(bigOne$ADM0_A3, worldcountry$ADM0_A3),] %>%
+      cbind(cases = bigOne$cases,
+            newcases = bigOne$new_cases, 
+            deaths = bigOne$deaths,
+            newdeaths = bigOne$new_cases,
+            recovered = bigOne$recovered,
+            newrecovered = bigOne$new_recovered)
+    colnames(worldcountryData@data)[c(72, 73, 74, 75, 76, 77)] <- c("cases",
+                                                                    "new_cases",
+                                                                    "deaths",
+                                                                    "new_deaths",
+                                                                    "recovered", 
+                                                                    "new_recovered")
+    worldcountryData
   })
   
-  reactive_db_category = reactive({
-    if (input$category == "Cases" | input$category == "New Cases"){
-      pal = colorBin(palettes = "Blues", domain = worldcountryData$cases)
-    }
-    if (input$category == "New Cases"){
-      pal = colorBin("Blues", domain = worldcountryData$new_Cases)
-    }
-    if (input$category == "Deaths" | input$category == "New Cases"){
-      pal = colorBin(palettes = "OrRd", domain = worldcountryData$deaths)
-    }
-    if (input$category == "New Deaths"){
-      pal = colorBin("OrRd", domain = worldcountryData$new_deaths)
-    }
-    if (input$category == "Recovered" | input$category == "New Cases"){
-      pal = colorBin(palettes = "YlGn", domain = worldcountryData$recovered)
-    }
-    if (input$category == "New Recovered"){
-      pal = colorBin("YlGn", domain = worldcountryData$new_recovered)
+  colorPal <- reactive({
+    if(input$quantile){
+      colorQuantile
+    } else {
+      colorBin
     }
   })
   
+  
+  output$map <- renderLeaflet({
+    if (input$category == "cases"){
+      plt = colorPal()(palette = "Blues", domain = unique(dataInput()$cases), n = 6) 
+      domn = dataInput()$cases
+      legend_title = "Cases"
+      label <- sprintf("<strong>%s</strong><br/>%s",
+                       dataInput()$SOVEREIGNT,
+                       format(dataInput()$cases, big.mark = " ")) %>% lapply(htmltools::HTML)
+    }
+    if (input$category == "new_cases"){
+      plt = colorPal()(palette = "Blues", domain = unique(dataInput()$new_cases), n = 6)
+      domn = dataInput()$new_cases
+      legend_title = "New Cases"
+      label <- sprintf("<strong>%s</strong><br/>%s",
+                       dataInput()$SOVEREIGNT,
+                       format(dataInput()$new_cases, big.mark = " ")) %>% lapply(htmltools::HTML)
+    }
+    if (input$category == "deaths"){
+      plt = colorPal()(palette = "OrRd", domain = dataInput()$deaths, n = 6)
+      domn = dataInput()$deaths
+      legend_title = "Deaths"
+      label <- sprintf("<strong>%s</strong><br/>%s",
+                       dataInput()$SOVEREIGNT,
+                       format(dataInput()$deaths, big.mark = " ")) %>% lapply(htmltools::HTML)
+    }
+    if (input$category == "new_deaths"){
+      plt = colorPal()(palette = "OrRd", domain = unique(dataInput()$new_deaths), n = 6) 
+      domn = dataInput()$new_deaths
+      legend_title = "New Deaths"
+      label <- sprintf("<strong>%s</strong><br/>%s",
+                       dataInput()$SOVEREIGNT,
+                       format(dataInput()$new_deaths, big.mark = " ")) %>% lapply(htmltools::HTML)
+    }
+    if (input$category == "recovered"){
+      plt = colorPal()(palette = "YlGn", domain = unique(dataInput()$recovered), n = 6)
+      domn = dataInput()$recovered
+      legend_title = "Recovered"
+      label <- sprintf("<strong>%s</strong><br/>%s",
+                       dataInput()$SOVEREIGNT,
+                       format(dataInput()$recovered, big.mark = " ")) %>% lapply(htmltools::HTML)
+    }
+    if (input$category == "new_recovered"){
+      plt = colorPal()(palette = "YlGn", domain = unique(dataInput()$new_recovered), n = 6)
+      domn = dataInput()$new_recovered
+      legend_title = "New Recovered"
+      label <- sprintf("<strong>%s</strong><br/>%s",
+                       dataInput()$SOVEREIGNT,
+                       format(dataInput()$new_recovered, big.mark = " ")) %>% lapply(htmltools::HTML)
+    }
+    
+    basemap %>% addPolygons(fillColor = ~ plt(domn),
+                            fillOpacity = 1,
+                            color = "black",
+                            weight = 1,
+                            highlight = highlightOptions(weight = 3,
+                                                         color = "black"),
+                            label = label,
+                            ) %>%
+                            addLegend(title = legend_title,
+                              position = "bottomright",
+                              pal = plt,
+                              values = ~ domn,
+                              opacity = 1
+                            )
+  })
   
 }
 
 
-
-
-# Define UI for app that draws a histogram ----
-ui <- fluidPage(
-  
-  # App title ----
-  titlePanel("Hello Shiny!"),
-  
-  # Sidebar layout with input and output definitions ----
-  sidebarLayout(
-    
-    # Sidebar panel for inputs ----
-    sidebarPanel(
-      
-      # Input: Slider for the number of bins ----
-      sliderInput(inputId = "bins",
-                  label = "Number of bins:",
-                  min = 1,
-                  max = 50,
-                  value = 30)
-      
-    ),
-    
-    # Main panel for displaying outputs ----
-    mainPanel(
-      
-      # Output: Histogram ----
-      plotOutput(outputId = "distPlot")
-      
-    )
-  )
-)
-
-
-
-# Define server logic required to draw a histogram ----
-server <- function(input, output) {
-  
-  # Histogram of the Old Faithful Geyser Data ----
-  # with requested number of bins
-  # This expression that generates a histogram is wrapped in a call
-  # to renderPlot to indicate that:
-  #
-  # 1. It is "reactive" and therefore should be automatically
-  #    re-executed when inputs (input$bins) change
-  # 2. Its output type is a plot
-  output$distPlot <- renderPlot({
-    
-    x    <- faithful$waiting
-    bins <- seq(min(x), max(x), length.out = input$bins + 1)
-    
-    hist(x, breaks = bins, col = "#75AADB", border = "white",
-         xlab = "Waiting time to next eruption (in mins)",
-         main = "Histogram of waiting times")
-    
-  })
-  
-}
 
 shinyApp(ui = u.i, server = ser.ver)
-
-
-
 
 
 
