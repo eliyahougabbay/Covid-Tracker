@@ -1,11 +1,10 @@
 ## COVID-19 Shiny application to improve my R skills
-# This work is base on 
-# Edward Parker, London School of Hygiene & Tropical Medicine (edward.parker@lshtm.ac.uk)
-# last updated April 2020 :   https://github.com/eparker12/nCoV_tracker.git
-# It's also based on Shiny tutorial : https://shiny.rstudio.com/tutorial/written-tutorial/lesson1/
+# This work is based on Edward Parker, London School of Hygiene & Tropical Medicine (edward.parker@lshtm.ac.uk)
+# Last update April 2020 : https://github.com/eparker12/nCoV_tracker.git
+# Also based on Shiny tutorial : https://shiny.rstudio.com/tutorial/written-tutorial/lesson1/
 
 
-## includes code adapted from the following sources:
+## Includes code adapted from the following sources:
 # https://github.com/rstudio/shiny-examples/blob/master/087-crandash/
 # https://rviews.rstudio.com/2019/10/09/building-interactive-world-maps-in-shiny/
 # https://github.com/rstudio/shiny-examples/tree/master/063-superzip-example
