@@ -69,15 +69,15 @@ basemap <- leaflet(worldcountryData) %>%
 #### Shiny Application ###
 u.i <- fluidPage(
   
-  titlePanel("Covid Mapping"),
+  titlePanel("Covid Tracker"),
   
   sidebarLayout(position = "left", 
                 
                 sidebarPanel(
                   
-                  h3("Palette"),
+                  h3("Scale"),
                   checkboxInput(inputId = "quantile",
-                                label = "Quantile palette",
+                                label = "Quantile scale",
                                 value = FALSE),
                   
                   radioButtons(
